@@ -1,0 +1,100 @@
+#include <ESP32_MailClient.h>
+#include <DHT.h>
+#include <ESP32Servo.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+
+#define DHTPIN 4
+#define DHTTYPE DHT11
+
+
+
+//**************
+//**** MQTT CONFIG *****
+//**************
+const char *mqtt_server = "node02.myqtthub.com";
+const int mqtt_port = 1883;
+const char *mqtt_user = "1";
+const char *mqtt_pass = "11";
+const char *root_topic_subscribe = "Temperatura/esp32";
+const char *root_topic_publish = "Temperatura/public_esp32";
+
+const char *root_topic_subscribe_door = "puerta/esp32";
+const char *root_topic_subscribe_modifyTemp = "modificar_temperatura/esp32";
+const char *root_topic_publish_data = "datos/esp32";
+const char *root_topic_publish_temp = "temperatura/esp32";
+const char *root_topic_publish_humedity = "humedad/esp32";
+
+//Config mail
+#define emailSenderAccount    "electivaiotunisangil@gmail.com"    
+#define emailSenderPassword   "ElectivaIOT20"
+#define emailRecipient        "jonhfuentes4@unisangil.edu.co"
+#define smtpServer            "smtp.gmail.com"
+#define smtpServerPort        465
+
+String emailSubject = "MENSAJE ENVIADO DESDE ESP 32";
+String emailBodyMessage = "<div style=\"color:#000000;\"><p>- DATOS ESP 32</p></div>";
+
+//**************
+//**** WIFICONFIG ******
+//**************
+const char* ssid ="UNISANGIL YOPAL" ;
+const char* password="";
+
+//**************
+//**** GLOBAL CONFIG *****
+//**************
+float temperatura=0;
+float humedad=0;
+int stRele=0;
+int stServo=0;
+static const int servoPin = 23;
+const int rele = 22;
+
+String topic="";
+String body="";
+int tempMod=25;
+int banderaControllerTempMail = 0;
+float UltimaTemp;
+
+const unsigned long publishTempAll = 25000;
+unsigned long lastPublishTempAll;
+
+const unsigned long publishHumedityAll = 25000;
+unsigned long lastPublishHumedityAll;
+
+
+//objects
+DHT dht(DHTPIN, DHTTYPE);
+Servo myservo;
+SMTPData smtpData;
+
+
+
+//**************
+//**** GLOBALES   ******
+//**************
+WiFiClient espClient;
+PubSubClient client(espClient);
+char msg[25];
+long count=0;
+
+
+//********
+//* F U N C I O N E S **
+//********
+void callback(char* topic, byte* payload, unsigned int length);
+void reconnect();
+void setup_wifi();
+// Callback function to get the Email sending status
+void sendCallback(SendStatus info);
+
+void read_sensor_data(void * parameter) {
+   for (;;) {
+    readDataSensor();
+    readModifyTemp();
+   }
+}
+
+    
