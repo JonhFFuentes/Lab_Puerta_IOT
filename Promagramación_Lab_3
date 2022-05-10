@@ -72,6 +72,141 @@ SMTPData smtpData;
 
 
 
+//************************
+//** F U N C I O N E S ***
+//************************
+void callback(char* topic, byte* payload, unsigned int length);
+void reconnect();
+void setup_wifi();
+// Callback function to get the Email sending status
+void sendCallback(SendStatus info);
+
+void read_sensor_data(void * parameter) {
+   for (;;) {
+    readDataSensor();
+    readModifyTemp();
+   }
+}
+
+void readDataSensor(){
+  humedad = dht.readHumidity();
+  UltimaTemp = dht.readTemperature();
+  if(!isnan(UltimaTemp)){
+    temperatura = UltimaTemp;
+    }
+  Serial.print(F("Humedad: "));
+  Serial.print(humedad);
+  Serial.print("%");
+  Serial.print(F("  Temperatura: "));
+  Serial.print(temperatura);
+  Serial.println(F("°C "));
+  delay(3000);
+  }
+
+void readTopicDoor(){
+  Serial.println(topic);
+  if(topic!=""){
+    String readTopic = topic.substring(16,20);
+    Serial.println(readTopic);
+    if(readTopic=="door"){
+      if(body=="abrir"){
+        Serial.println("readTopic -> ok");
+        Serial.println(body);
+        myservo.write(180);
+        emailSubject = "PUERTA ABIERTA";
+        emailBodyMessage = "<div style=\"color:#000000;\"><p>- La puerta esta abierta</p></div>";
+        ConfigSendMailTo();
+        topic="";
+        stServo = 1;
+        }
+      if(body=="cerrar"){
+        Serial.println("readTopic -> ok");
+        Serial.println(body);
+        myservo.write(1);
+        topic="";
+        stServo = 0;
+        }
+       if(body=="enviarCorreo"){
+        Serial.println("enviarCorreo -> ok");
+        Serial.println(body);
+        ConfigSendMailTo();
+        }
+      }
+    }
+  }
+
+ void readModifyTemp(){
+  Serial.println(topic);
+  if(topic!=""){
+    String readTopic = topic.substring(16,26);
+    Serial.println(readTopic);
+    if(readTopic=="modifyTemp"){
+      if(body.toInt()>=0){
+        Serial.println("readModifyTemp -> ok");
+        Serial.println(body.toInt());
+        tempMod = body.toInt();
+        topic="";
+        }
+      }
+    }
+  }
+
+ void controllerTemp(){
+  if(temperatura>tempMod){
+    Serial.println("Encendido ventildor-> ok");
+    digitalWrite(rele,HIGH);
+    emailSubject = "VENTILADOR ENCENDIDO";
+    emailBodyMessage = "<div style=\"color:#000000;\"><p>- La temperatura a aumentado, el ventilador ha sido activado</p></div>";
+    if(banderaControllerTempMail == 0){
+      ConfigSendMailTo();
+      banderaControllerTempMail = 1; 
+      }
+    }else{
+      Serial.println("Apagado ventilador");
+      digitalWrite(rele,LOW);
+      banderaControllerTempMail = 0;
+      }
+  }
+
+  // Callback function to get the Email sending status
+void sendCallback(SendStatus msg) {
+  // Print the current status
+  Serial.println(msg.info());
+
+  // Do something when complete
+  if (msg.success()) {
+    Serial.println("----------------");
+  }
+}
+  
+
+
+void setup_task() {
+  xTaskCreate(
+    read_sensor_data,    
+    "Read sensor data",  
+    1000,            
+    NULL,            
+    1,               
+    NULL            
+  );
+}
+
+void initServo(){
+  // Allow allocation of all timers for servo library
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+  // Set servo PWM frequency to 50Hz
+  myservo.setPeriodHertz(50);
+  // Attach to servo and define minimum and maximum positions
+  // Modify as required
+  myservo.attach(servoPin,500, 2400);
+  }
+
+
+
 //**************
 //**** GLOBALES   ******
 //**************
